@@ -8,6 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "examples"))
 from mcp_server import handle_request, TOOLS, SERVER_INFO
+import mcp_server
 
 
 
@@ -148,3 +149,34 @@ def test_run_recall_timeout(tmp_path, monkeypatch):
     assert "timed out after 60 seconds" in res
 
 
+def test_run_recall_answer_file_is_unique_per_call_and_cleaned_up(tmp_path, monkeypatch):
+    """The scoped answer file must differ between calls and must not survive them.
+
+    Regression guard for the shared-answer-file race. The unit tests that shipped with
+    the scoping fix all pass against a single fixed path too, so none of them actually
+    pinned the behaviour; this one fails if the path stops being per-call or is left
+    behind on disk.
+    """
+    recorder = tmp_path / "paths.log"
+    stub = tmp_path / "stub_record.py"
+    stub.write_text(
+        "\n".join(
+            [
+                "import os",
+                "out = os.environ['BRAIN_ANSWER_OUT']",
+                "open(r'{rec}', 'a', encoding='utf-8').write(out + chr(10))",
+                "open(out, 'w', encoding='utf-8').write('BUNDLE')",
+            ]
+        ).format(rec=recorder),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(mcp_server, "BRAIN_ASK_SCRIPT", stub)
+
+    assert "BUNDLE" in mcp_server.run_recall("first query")
+    assert "BUNDLE" in mcp_server.run_recall("second query")
+
+    used = [l.strip() for l in recorder.read_text(encoding="utf-8").splitlines() if l.strip()]
+    assert len(used) == 2, used
+    assert used[0] != used[1], f"both calls shared one answer file: {used[0]}"
+    for p in used:
+        assert not Path(p).exists(), f"answer file left behind: {p}"
