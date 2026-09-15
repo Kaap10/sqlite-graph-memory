@@ -8,11 +8,11 @@ scripts — `index_notes.py`, `brain_ask.py`, `turnstate_hook.py` — that give 
 SQLite is the only database ([`schema.sql`](schema.sql)) and `[[wikilinks]]` are the graph.
 
 Status: **pilot**, and the word is load-bearing: it runs daily in one real setup (a ~100k-note
-Obsidian vault driven by Claude Code), but it is deliberately minimal, has 7 tests for
-`index_notes.py`, while `brain_ask.py` and `turnstate_hook.py` have none, and makes no
-attempt to be general — see [What's intentionally missing](#whats-intentionally-missing).
+Obsidian vault driven by Claude Code), but it is deliberately minimal and makes no attempt
+to be general — see [What's intentionally missing](#whats-intentionally-missing), which is
+where the uneven test coverage is described.
 Published as the companion code for an upcoming write-up on lightweight Graph RAG for agents;
-the one design note that is already written is [docs/bitemporal.md](docs/bitemporal.md).
+the one design note that is already written is [`docs/bitemporal.md`](docs/bitemporal.md).
 
 ## Why
 
@@ -84,11 +84,13 @@ an edge table only when hop depth or corpus size demands it.
 
 - No entity lane. The production setup has an extra retrieval lane over people/project
   cards; it is too entangled with personal data to publish.
-- No incremental indexing, no eval suite, and no packaging; `index_notes.py` has 7 tests,
-  while `brain_ask.py` and `turnstate_hook.py` have none — the status line above says
-  **pilot** on purpose.
+- No incremental indexing, no eval suite, and no packaging. Test coverage is uneven:
+  `index_notes.py`, `brain_ask.py` and `mcp_server.py` have unit tests, `turnstate_hook.py`
+  has none. Run `pytest -q` for the current count rather than trusting a number written in
+  prose here — that is how this file ended up claiming "no tests" while seven were passing.
+  The status line above says **pilot** on purpose.
 
-## Quickstart  
+## Quickstart
 
 ```bash
 pip install -r requirements.txt
@@ -145,16 +147,13 @@ table in [`schema.sql`](schema.sql) accumulates evidence for.
 
 **Now — [v0.1.1](https://github.com/tonydzi/sqlite-graph-memory/releases).**
 The pilot as it runs daily: retrieval pipeline, per-turn ledger and A/B telemetry, all in
-`brain_ask.py` and `turnstate_hook.py`, plus the bi-temporal design note. Two known defects are
-open issues rather than footnotes:
-[#1](https://github.com/tonydzi/sqlite-graph-memory/issues/1) (the indexer
-ingests `.stversions` backups, sync-conflict copies and `.obsidian` junk as if they were notes)
-and the former #2 test gap is now closed: `index_notes.py` has 7 tests,
-while `brain_ask.py` and `turnstate_hook.py` have none.
+`brain_ask.py` and `turnstate_hook.py`, plus the bi-temporal design note. Known defects live in
+the [tracker](https://github.com/tonydzi/sqlite-graph-memory/issues) rather than in footnotes
+here, and this file deliberately names no issue numbers: they get closed, the prose around them
+does not notice, and that drift is the defect this paragraph used to carry twice over.
 
 **Next:**
 
-- **Ignore rules for the indexer** ([#1](https://github.com/tonydzi/sqlite-graph-memory/issues/1)).
 - **v0.2**: a public benchmark — a synthetic 200–500 note mini-vault with real wikilinks,
   ~200 hand-labeled queries stratified by type (entity / theme / bridge / compare /
   temporal / navigational), and a full ablation matrix (hops × seed caps × neighbour caps
