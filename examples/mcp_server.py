@@ -69,10 +69,14 @@ TOOLS = [
 ]
 
 
-def run_recall(query: str, mode: str = "associative") -> str:
-    """Invoke brain_ask.py in a crash-safe subprocess and return the retrieved text."""
+def run_recall(query: str, mode: str = "associative") -> tuple[str, bool]:
+    """Invoke brain_ask.py in a crash-safe subprocess and return (text, is_error).
+
+    An empty answer file means no notes matched; stdout is never promoted to an answer
+    because it carries startup notices, load reports, and tokenizer warnings.
+    """
     if not BRAIN_ASK_SCRIPT.exists():
-        return f"Error: brain_ask.py not found at {BRAIN_ASK_SCRIPT}"
+        return f"Error: brain_ask.py not found at {BRAIN_ASK_SCRIPT}", True
 
     if mode not in ("associative", "direct", "ab"):
         mode = "associative"
@@ -103,22 +107,23 @@ def run_recall(query: str, mode: str = "associative") -> str:
         )
         if res.returncode != 0:
             err = (res.stderr or res.stdout or "").strip()
-            return f"Recall error (exit code {res.returncode}):\n{err}"
+            return f"Recall error (exit code {res.returncode}):\n{err}", True
 
-        # If --ask mode was used, read the scoped per-call answer file
+        # Read the scoped per-call answer file
         if temp_ans_file.exists():
             try:
                 content = temp_ans_file.read_text(encoding="utf-8", errors="replace").strip()
                 if content:
-                    return content
+                    return content, False
             except Exception:
                 pass
 
-        return res.stdout.strip() or "(no matching notes found)"
+        # Empty answer file: return explicit message and flag error so agent does not ingest stdout noise
+        return "(no matching notes found)", True
     except subprocess.TimeoutExpired:
-        return "Recall error: timed out after 60 seconds."
+        return "Recall error: timed out after 60 seconds.", True
     except Exception as e:
-        return f"Recall exception: {e}"
+        return f"Recall exception: {e}", True
     finally:
         if temp_ans_file.exists():
             try:
@@ -182,13 +187,13 @@ def handle_request(req: dict) -> dict:
                         "isError": True
                     }
                 }
-            result_text = run_recall(query, mode=mode)
+            result_text, is_error = run_recall(query, mode=mode)
             return {
                 "jsonrpc": "2.0",
                 "id": req_id,
                 "result": {
                     "content": [{"type": "text", "text": result_text}],
-                    "isError": False
+                    "isError": is_error
                 }
             }
         else:
@@ -225,8 +230,9 @@ def main():
             mode = "ab"
         query_parts = [a for a in sys.argv[1:] if a not in flags]
         q = " ".join(query_parts) if query_parts else "agent memory"
+        text, _ = run_recall(q, mode=mode)
         print(f"=== MCP Test Query: {q} (mode={mode}) ===")
-        print(run_recall(q, mode=mode))
+        print(text)
         return
 
 
