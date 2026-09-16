@@ -106,8 +106,9 @@ def test_run_recall_success_with_scoped_answer_file(tmp_path, monkeypatch):
     )
     import mcp_server
     monkeypatch.setattr(mcp_server, "BRAIN_ASK_SCRIPT", stub)
-    res = mcp_server.run_recall("test agent memory query", mode="associative")
-    assert "STUB CONTEXT BUNDLE FOR: test agent memory query" in res
+    text, is_err = mcp_server.run_recall("test agent memory query", mode="associative")
+    assert "STUB CONTEXT BUNDLE FOR: test agent memory query" in text
+    assert is_err is False
 
 
 def test_run_recall_exit_code_error(tmp_path, monkeypatch):
@@ -116,27 +117,54 @@ def test_run_recall_exit_code_error(tmp_path, monkeypatch):
     stub.write_text("import sys\nsys.stderr.write('SYNTHETIC_FAILURE_MSG\\n')\nsys.exit(1)\n", encoding="utf-8")
     import mcp_server
     monkeypatch.setattr(mcp_server, "BRAIN_ASK_SCRIPT", stub)
-    res = mcp_server.run_recall("test query")
-    assert "Recall error (exit code 1)" in res
-    assert "SYNTHETIC_FAILURE_MSG" in res
+    text, is_err = mcp_server.run_recall("test query")
+    assert "Recall error (exit code 1)" in text
+    assert "SYNTHETIC_FAILURE_MSG" in text
+    assert is_err is True
 
 
-def test_run_recall_stdout_fallback(tmp_path, monkeypatch):
-    """Verify stdout is returned when no answer file is produced."""
-    stub = tmp_path / "stub_stdout.py"
-    stub.write_text("print('Direct stdout text from stub')\n", encoding="utf-8")
+def test_empty_answer_file_does_not_fallback_to_stdout(tmp_path, monkeypatch):
+    """When the answer file is empty, stdout must not be returned and isError must be True.
+
+    Regression guard for issue #9: stdout holds startup noise (load reports, tokenizer
+    warnings) which must never be dressed up as a recall bundle with isError: false.
+    """
+    stub = tmp_path / "stub_noisy_empty.py"
+    stub.write_text(
+        "import sys\n"
+        "sys.stdout.write('XLMRobertaModel LOAD REPORT: tokenizer warning noise\\n')\n",
+        encoding="utf-8"
+    )
     import mcp_server
     monkeypatch.setattr(mcp_server, "BRAIN_ASK_SCRIPT", stub)
-    res = mcp_server.run_recall("test query")
-    assert "Direct stdout text from stub" in res
+
+    # 1. Direct function call test
+    text, is_err = mcp_server.run_recall("test query")
+    assert "LOAD REPORT" not in text
+    assert text == "(no matching notes found)"
+    assert is_err is True
+
+    # 2. Protocol tool call test
+    req = {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "tools/call",
+        "params": {"name": "memory_recall", "arguments": {"query": "test query"}}
+    }
+    resp = mcp_server.handle_request(req)
+    assert resp["id"] == 10
+    assert resp["result"]["isError"] is True
+    assert "LOAD REPORT" not in resp["result"]["content"][0]["text"]
+    assert resp["result"]["content"][0]["text"] == "(no matching notes found)"
 
 
 def test_run_recall_missing_script(tmp_path, monkeypatch):
     """Verify missing brain_ask.py script returns error rather than raising."""
     import mcp_server
     monkeypatch.setattr(mcp_server, "BRAIN_ASK_SCRIPT", tmp_path / "non_existent.py")
-    res = mcp_server.run_recall("test query")
-    assert "Error: brain_ask.py not found" in res
+    text, is_err = mcp_server.run_recall("test query")
+    assert "Error: brain_ask.py not found" in text
+    assert is_err is True
 
 
 def test_run_recall_timeout(tmp_path, monkeypatch):
@@ -145,8 +173,9 @@ def test_run_recall_timeout(tmp_path, monkeypatch):
     def mock_run(*args, **kwargs):
         raise subprocess.TimeoutExpired(cmd=kwargs.get("args") or [], timeout=60)
     monkeypatch.setattr(mcp_server.subprocess, "run", mock_run)
-    res = mcp_server.run_recall("test query")
-    assert "timed out after 60 seconds" in res
+    text, is_err = mcp_server.run_recall("test query")
+    assert "timed out after 60 seconds" in text
+    assert is_err is True
 
 
 def test_run_recall_answer_file_is_unique_per_call_and_cleaned_up(tmp_path, monkeypatch):
@@ -170,13 +199,20 @@ def test_run_recall_answer_file_is_unique_per_call_and_cleaned_up(tmp_path, monk
         ).format(rec=recorder),
         encoding="utf-8",
     )
+    import mcp_server
     monkeypatch.setattr(mcp_server, "BRAIN_ASK_SCRIPT", stub)
 
-    assert "BUNDLE" in mcp_server.run_recall("first query")
-    assert "BUNDLE" in mcp_server.run_recall("second query")
+    text1, is_err1 = mcp_server.run_recall("first query")
+    assert "BUNDLE" in text1
+    assert is_err1 is False
+
+    text2, is_err2 = mcp_server.run_recall("second query")
+    assert "BUNDLE" in text2
+    assert is_err2 is False
 
     used = [l.strip() for l in recorder.read_text(encoding="utf-8").splitlines() if l.strip()]
     assert len(used) == 2, used
     assert used[0] != used[1], f"both calls shared one answer file: {used[0]}"
     for p in used:
         assert not Path(p).exists(), f"answer file left behind: {p}"
+
