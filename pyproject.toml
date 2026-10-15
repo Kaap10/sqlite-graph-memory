@@ -41,7 +41,13 @@ dependencies = ["numpy>=1.24"]
 # the turnstate memory do not. Kept out of the base install so that
 # `pip install sqlite-graph-memory` stays a two-second, ~20 MB operation instead
 # of pulling ~2 GB of torch on a machine that only wants to read the graph.
-embeddings = ["sentence-transformers>=2.6"]
+# Intel Macs top out at torch 2.2.x, which is built against NumPy 1.x and dies on
+# NumPy 2 with "RuntimeError: Numpy is not available" (measured 2026-10-15 on an
+# x86_64 Mac, Python 3.9: sgm-index crashed; with numpy<2 it indexed cleanly).
+embeddings = [
+  "sentence-transformers>=2.6",
+  "numpy<2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+]
 
 [project.urls]
 Homepage = "https://github.com/tonydzi/sqlite-graph-memory"
