@@ -24,6 +24,8 @@ On this vault, vector-only ranks ahead of graph mode. All of it is written out i
 
 ## v0.3.0 — 2026-10-07
 
+*Release record, added 2026-10-16: the package went to PyPI on 2026-10-15 and this GitHub release object was cut a day later, so the tag points at a commit slightly after the upload (it adds only the workflow's `skip-existing` flag). Also in 0.3.0 as uploaded: the embeddings extra pins `numpy<2` on Intel Macs, where torch stops at 2.2.*
+
 **You can install it now.** For three months this was a repository you had to clone, and for
 an engineer deciding whether to try something, a clone is a much bigger ask than a command.
 There is now a `pyproject.toml`, the modules live in `src/sqlite_graph_memory/`, and
