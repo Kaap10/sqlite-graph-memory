@@ -200,7 +200,8 @@ def main():
     flags = {'--ask', '--graph', '--ab'}
     query = ' '.join(a for a in args if a not in flags)
     if not query or not EMB.exists():
-        print('need an embedding index (%s) and a query — run index_notes.py first' % EMB); return
+        sys.stderr.write('need an embedding index (%s) and a query — run index_notes.py first\n' % EMB)
+        raise SystemExit(1)
 
     dev = pick_device()
     emb, meta = load_index()
