@@ -4,6 +4,27 @@ What shipped, in plain words. Entries below v0.1.3 were written on 2026-09-05 fr
 release notes that already existed — the file itself did not exist until then, so those three are
 recorded after the fact rather than backdated to look contemporaneous.
 
+## Unreleased
+
+**A spec you can paste.** `BITEMPORAL.md` turns the close-don't-delete rule from
+`docs/bitemporal.md` into a block for any agent's `CLAUDE.md` or `AGENTS.md`: three fields
+(`valid_from`, `valid_to`, `superseded_by`), five rules, and a one-line attribution as the
+whole licence.
+
+**`llms.txt` for agents that read before they install.** One page: what this is, the three
+commands, MCP config for JSON clients, Claude Code and Codex, the bench numbers as they stand
+on the leaderboard, the eval commands, every environment variable.
+
+**The README says what it is for in its first line**: persistent memory for Claude Code,
+Cursor and Codex over your own markdown notes.
+
+**One star request, earned and once.** After a successful `sgm-ask --ab` in a terminal, one
+stderr line asks for a GitHub star. It is printed once per machine (a marker file in
+`~/.config/sqlite-graph-memory`, or `SGM_CONFIG_DIR`), never under `CI`, never when stdout is
+piped, never when `BRAIN_AB_JSON` is set, and never with `SGM_NO_STAR_PROMPT=1`.
+`tests/test_star_prompt.py` covers each of those and goes red if the marker write or either
+guard is removed.
+
 ## v0.3.1 — 2026-10-19
 
 **Credit where it is due.** The MCP server that ships as `sgm-mcp` was written by Vardhman Gupta

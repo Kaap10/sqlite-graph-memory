@@ -15,6 +15,9 @@ Config (env, all optional):
   TURNSTATE_DB      SQLite db for A/B telemetry (default: ./turnstate.db)
   BRAIN_ANSWER_OUT  file to mirror the answer into (default: ./_brain_answer.txt)
   BRAIN_AB_JSON     if set, --ab also writes a structured JSON diff to this path
+  SGM_NO_STAR_PROMPT=1  never print the one-time GitHub star line after --ab
+  SGM_CONFIG_DIR    where that line's once-per-machine marker lives
+                    (default: $XDG_CONFIG_HOME or ~/.config, /sqlite-graph-memory)
 """
 import os, re, sys, pickle, datetime, sqlite3, time
 from pathlib import Path
@@ -193,6 +196,48 @@ def rerank_candidates(ce, query, cand, meta, topn=TOPN):
     return sorted(zip(cand, sc), key=lambda x: -x[1])[:topn]
 
 
+STAR_URL = 'https://github.com/tonydzi/sqlite-graph-memory'
+STAR_MARKER = 'star_prompt_shown'
+
+
+def _config_dir(env=None):
+    """Per-user config folder: SGM_CONFIG_DIR, else $XDG_CONFIG_HOME or ~/.config."""
+    env = os.environ if env is None else env
+    if env.get('SGM_CONFIG_DIR'):
+        return Path(env['SGM_CONFIG_DIR'])
+    base = env.get('XDG_CONFIG_HOME') or os.path.join(os.path.expanduser('~'), '.config')
+    return Path(base) / 'sqlite-graph-memory'
+
+
+def maybe_star_prompt(stream=None, env=None, interactive=None):
+    """After a successful --ab run, ask for a star once per machine, on stderr.
+
+    Silent when SGM_NO_STAR_PROMPT=1, when CI is set, when stdout is not a terminal
+    (piped or machine-readable use), or when the marker file already exists.
+    CRASH-SAFETY: any failure here is swallowed; the answer was already printed.
+    Returns True only if the line was printed.
+    """
+    env = os.environ if env is None else env
+    stream = sys.stderr if stream is None else stream
+    try:
+        if env.get('SGM_NO_STAR_PROMPT', '') not in ('', '0') or env.get('CI'):
+            return False
+        if interactive is None:
+            interactive = sys.stdout.isatty()
+        if not interactive:
+            return False
+        marker = _config_dir(env) / STAR_MARKER
+        if marker.exists():
+            return False
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(time.strftime('%Y-%m-%d %H:%M:%S') + '\n', encoding='utf-8')
+        stream.write('\nIf the A/B diff above was useful, a star helps other people find it: '
+                     '%s (shown once; SGM_NO_STAR_PROMPT=1 silences it)\n' % STAR_URL)
+        return True
+    except Exception:
+        return False
+
+
 def main():
     args = sys.argv[1:]
     ask = '--ask' in args
@@ -280,6 +325,8 @@ def main():
                 pass
         _out = Path(os.getenv('BRAIN_ANSWER_OUT', '_brain_answer.txt'))
         _out.write_text(text, encoding='utf-8'); print(text)
+        if not jpath:   # a JSON consumer is a machine, not a person to ask
+            maybe_star_prompt()
         return
 
     # GATE: wiki-graph helps THEME queries, hurts ENTITY/name queries -> skip graph for entities.

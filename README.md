@@ -1,8 +1,12 @@
-# sqlite-graph-memory
+# sqlite-graph-memory: persistent memory for Claude Code, Cursor and Codex over your own markdown notes
 
 <!-- mcp-name: io.github.tonydzi/sqlite-graph-memory -->
 
 [![PyPI](https://img.shields.io/pypi/v/sqlite-graph-memory)](https://pypi.org/project/sqlite-graph-memory/) [![tests](https://img.shields.io/github/actions/workflow/status/tonydzi/sqlite-graph-memory/tests.yml?label=tests)](https://github.com/tonydzi/sqlite-graph-memory/actions/workflows/tests.yml) [![MCP Registry](https://img.shields.io/badge/MCP%20Registry-io.github.tonydzi%2Fsqlite--graph--memory-blue)](https://registry.modelcontextprotocol.io/v0/servers?search=sqlite-graph-memory) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+Long-term memory for coding agents that lives in the notes you already keep: an MCP server
+and a CLI over any folder of markdown, Obsidian vaults included. `pip install`, point it at
+the folder, and Claude Code, Cursor, Codex or any other MCP client can recall from it.
 
 **Your agent forgets everything between sessions, and plain vector search gives it back
 flat, unrelated chunks. This gives it associative recall over your own markdown notes:
@@ -46,6 +50,11 @@ The answer lives in `tool-lanternfish` ("Lanternfish is written in Elixir"). The
 never names Lanternfish, so the vector pass does not find it in the top 12 at all.
 `project-ouzel` links to it, so one graph hop puts it second.
 
+If that hop found something your vector search missed, a
+[star](https://github.com/tonydzi/sqlite-graph-memory) is how other people with a notes
+folder find this repo. `sgm-ask --ab` asks the same once per machine, in a terminal only;
+`SGM_NO_STAR_PROMPT=1` turns it off.
+
 That is the idea in one query, and it is not a blanket win. On this same vault vector-only
 ranks ahead of graph mode overall; the numbers are in [`bench/`](bench/README.md). `--ab`
 exists so you can measure which one wins on your own notes.
@@ -53,7 +62,10 @@ exists so you can measure which one wins on your own notes.
 **From any MCP client** (Claude Desktop, Cursor, Zed, Windsurf): `sgm-mcp` after the install
 above, or `uvx --with 'sqlite-graph-memory[embeddings]' sqlite-graph-memory`. Set
 `BRAIN_INDEX_DIR` to the `index` folder `sgm-index` wrote. Config:
-[`examples/mcp-config.json`](examples/mcp-config.json).
+[`examples/mcp-config.json`](examples/mcp-config.json). Claude Code:
+`claude mcp add sqlite-graph-memory -e BRAIN_INDEX_DIR=/path/to/index -- sgm-mcp`.
+Codex: a `[mcp_servers.sqlite-graph-memory]` table in `~/.codex/config.toml` with
+`command = "sgm-mcp"`. Agents that read files first: [`llms.txt`](llms.txt).
 
 ## What it is
 
