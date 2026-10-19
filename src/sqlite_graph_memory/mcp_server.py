@@ -149,6 +149,15 @@ def run_recall(query: str, mode: str = "associative") -> tuple[str, bool]:
 
 def handle_request(req: dict) -> dict:
     """Handle a single JSON-RPC 2.0 MCP request."""
+    if not isinstance(req, dict):
+        return {
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {
+                "code": -32600,
+                "message": "Invalid Request: expected JSON object"
+            }
+        }
     method = req.get("method")
     req_id = req.get("id")
 
