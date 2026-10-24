@@ -4,7 +4,7 @@ What shipped, in plain words. Entries below v0.1.3 were written on 2026-09-05 fr
 release notes that already existed — the file itself did not exist until then, so those three are
 recorded after the fact rather than backdated to look contemporaneous.
 
-## Unreleased
+## v0.3.2 — 2026-10-24
 
 **The PageRank lane the README credits is now in the package** (#51). `ppr.py` runs
 personalized PageRank over the `[[wikilink]]` graph, seeded by the dense hits, and fuses it with

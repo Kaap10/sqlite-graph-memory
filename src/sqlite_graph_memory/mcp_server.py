@@ -40,7 +40,7 @@ except ImportError:
     try:
         from . import __version__
     except (ImportError, ValueError):
-        __version__ = "0.3.1"
+        __version__ = "0.3.2"
 
 # Ensure UTF-8 for stdio communication on all platforms (including Windows console)
 try:
