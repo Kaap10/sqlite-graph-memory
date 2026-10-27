@@ -4,6 +4,18 @@ What shipped, in plain words. Entries below v0.1.3 were written on 2026-09-05 fr
 release notes that already existed — the file itself did not exist until then, so those three are
 recorded after the fact rather than backdated to look contemporaneous.
 
+## Unreleased
+
+**Credit, written down at last.** Four outside pull requests merged since 19.10 and none was named
+here. Thanks to [@Kaap10](https://github.com/Kaap10): the MCP server now answers non-object JSON
+payloads with `-32600 Invalid Request` instead of failing (#32, closes #22), and finds its
+`brain_ask` sibling and passes a non-zero exit through in test mode (#33, closes #24). Thanks to
+[@Vamsi-2581](https://github.com/Vamsi-2581): a missing embedding index is now reported as an error
+instead of passing silently (#35). Thanks to [@Khushbu677](https://github.com/Khushbu677): tests for
+the turnstate hook's ledger writes (#57). From now on `scripts/credit_gate.py` runs in CI and goes red
+when a merged outside PR has no line here, or when a `@handle` here does not exist; the rules are in
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## v0.3.3 — 2026-10-26
 
 **Hidden note files are skipped like hidden folders.** A note whose filename starts with a
